@@ -32,9 +32,10 @@ jobs:
 
       - name: Set New Version
         run: |
+          ls
           OLD_VERSION=`cat ./pyproject.toml | grep ^version | cut -d '"' -f 2`
           OLD_VERSION="\"$OLD_VERSION\""
-          NEW_VERSION="\"${{ github.event.inputs.newVersion }}""
+          NEW_VERSION="\"${{ github.event.inputs.newVersion }}\""
           sed -i "s+version = $OLD_VERSION+version = $NEW_VERSION+g" ./pyproject.toml
 
       - name: Push Tag
