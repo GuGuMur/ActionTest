@@ -21,7 +21,14 @@ jobs:
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
 
-      - run: echo "TAG_NAME=v$(pdm show --version)" >> $GITHUB_ENV
+      - name: Set New Version
+        run: |
+          ls ./
+          OLD_VERSION=`cat ./pyproject.toml | grep ^version | cut -d '"' -f 2`
+          OLD_VERSION="\"$OLD_VERSION\""
+          NEW_VERSION="\"${{ github.event.inputs.newVersion }}\""
+          sed -i "s+version = $OLD_VERSION+version = $NEW_VERSION+g" ./pyproject.toml
+          echo "TAG_NAME=v$(pdm show --version)" >> $GITHUB_ENV 
 
       - name: Archive Changelog
         uses: docker://ghcr.io/nonebot/auto-changelog:master
@@ -30,19 +37,12 @@ jobs:
           archive_title: ${{ env.TAG_NAME }}
           commit_and_push: false
 
-      - name: Set New Version
-        run: |
-          ls ./
-          OLD_VERSION=`cat ./pyproject.toml | grep ^version | cut -d '"' -f 2`
-          OLD_VERSION="\"$OLD_VERSION\""
-          NEW_VERSION="\"${{ github.event.inputs.newVersion }}\""
-          sed -i "s+version = $OLD_VERSION+version = $NEW_VERSION+g" ./pyproject.toml
 
       - name: Push Tag
         run: |
-          git config user.name github-action[bot]
-          git config user.email github-action[bot]@users.noreply.github.com
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
           git add .
-          git commit -m ":bookmark: Release $(pdm show --version)"
+          git commit -m ":bookmark: Release $NEW_VERSION"
           git tag ${{ env.TAG_NAME }}
-          git push -f && git push -f --tags
+          git push && git push --tags
