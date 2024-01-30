@@ -1,0 +1,49 @@
+name: Trigger Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      newVersion:
+        description: 'New Version'     
+        required: true
+        default: '执行手动发包时释放的版本号'
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.BOT_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Python environment
+        uses: ./.github/actions/setup-python
+
+      - run: echo "TAG_NAME=v$(pdm show --version)" >> $GITHUB_ENV
+
+      - name: Archive Changelog
+        uses: docker://ghcr.io/nonebot/auto-changelog:master
+        with:
+          archive_regex: '(?<=## )最近更新(?=\n)'
+          archive_title: ${{ env.TAG_NAME }}
+          commit_and_push: false
+
+      - name: Set New Version
+        run: |
+          OLD_VERSION=`cat pyproject.toml | grep ^version | cut -d '"' -f 2`
+          OLD_VERSION="\"$OLD_VERSION\""
+          NEW_VERSION="\"${{ github.event.inputs.newVersion }}""
+          sed -i "s+version = $OLD_VERSION+version = $NEW_VERSION+g" pyproject.toml
+
+      - name: Push Tag
+        run: |
+          git config user.name BotLunacub
+          git config user.email BotLunacub@users.noreply.github.com
+          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/GuGuMur/nonebot-plugin-skland-arksign.git
+          git add .
+          git commit -m ":bookmark: Release $(pdm show --version)"
+          git tag ${{ env.TAG_NAME }}
+          git push -f && git push -f --tags
